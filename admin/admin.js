@@ -187,20 +187,20 @@ async function CategoriesByDepartmentId(req, res) {
     }
 }
 
-async function previousFormsByCategories(req, res) {
-    const { category_id } = req.params;
-    const query = `SELECT * FROM elkem.forms WHERE category_id = $1`;
-    try {
-        const result = await db.query(query, [category_id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Forms not found' });
-        }
-        res.status(200).json(result.rows);
-    } catch (err) {
-        console.error('Error fetching data:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-}
+// async function previousFormsByCategories(req, res) {
+//     const { category_id } = req.params;
+//     const query = `SELECT * FROM elkem.forms WHERE category_id = $1`;
+//     try {
+//         const result = await db.query(query, [category_id]);
+//         if (result.rows.length === 0) {
+//             return res.status(404).json({ error: 'Forms not found' });
+//         }
+//         res.status(200).json(result.rows);
+//     } catch (err) {
+//         console.error('Error fetching data:', err);
+//         res.status(500).json({ error: 'Internal server error' });
+//     }
+// }
 
 async function addPlantsInOrganization(req, res) {
     const { organization_id } = req.params;
@@ -860,6 +860,51 @@ async function addFormToCategory(req, res) {
     }
 }
 
+async function previousFormsByCategories(req, res) {
+    const { category_id } = req.params;
+    const query = `
+        SELECT 
+            f.form_id,
+            f.category_id,
+            f.form_name,
+            f.form_description,
+            f.version,
+            fr.frequency_name,
+            mo.moderation_name,
+            CONCAT(u.first_name, ' ', u.last_name) AS created_by_name,
+            f.created_at,
+            f.needs_approval,
+            f.status,
+            f.form_data
+        FROM elkem.forms f
+        LEFT JOIN elkem.frequency fr ON f.frequency_id = fr.frequency_id
+        LEFT JOIN elkem.moderation mo ON f.moderation_id = mo.moderation_id
+        LEFT JOIN elkem.users u ON f.created_by = u.user_id
+        WHERE f.category_id = $1
+    `;
+    try {
+        const result = await db.query(query, [category_id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Forms not found' });
+        }
+        
+        // Modify the result to exclude the IDs (frequency_id, moderation_id, created_by)
+        const modifiedResults = result.rows.map(form => {
+            const { frequency_name, moderation_name, created_by_name, ...formWithoutIds } = form;
+            return {
+                ...formWithoutIds,
+                frequency_name,
+                moderation_name,
+                created_by_name
+            };
+        });
+
+        res.status(200).json(modifiedResults);
+    } catch (err) {
+        console.error('Error fetching data:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
 
 
 module.exports = {

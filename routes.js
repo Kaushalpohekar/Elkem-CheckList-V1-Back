@@ -106,5 +106,5 @@ router.put('/updateUserFromAdmin/:user_id',admin.updateUserFromAdmin);
 router.get('/getAllModeration', admin.getAllModeration);
 router.get('/getAllFrequency', admin.getAllFrequency);
 router.post('/addFormToCategory',admin.addFormToCategory);
-
+router.get('/prevForms/:category_id',admin.previousFormsByCategories);
 module.exports=router;
