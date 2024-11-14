@@ -1,0 +1,37 @@
+{
+  "name": "smart_work_permit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niket-malviya/Smat_Work_permit.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/niket-malviya/Smat_Work_permit/issues"
+  },
+  "homepage": "https://github.com/niket-malviya/Smat_Work_permit#readme",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-validator": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "jwt-utils": "^1.0.5",
+    "mime-types": "^2.1.35",
+    "mongoose": "^8.3.4",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.9.7",
+    "nodemailer": "^6.9.14",
+    "nodemon": "^3.1.0",
+    "pg": "^8.11.5",
+    "uuid": "^9.0.1"
+  }
+}
