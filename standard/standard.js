@@ -377,7 +377,7 @@ async function getAuthorizersByDepartment(req, res) {
 
     const getQuery = `
         SELECT first_name, last_name, user_id
-        FROM public.users
+        FROM elkem.users
         WHERE department_id = $1 AND role_id = $2
     `;
 
@@ -396,73 +396,110 @@ async function getAuthorizersByDepartment(req, res) {
     }
 }
 
+// async function insertSubmissionDetails(req, res) {
+//     const client = await db.connect();
+//     try {
+//         await client.query('BEGIN');
+//         const status = 'opened';
+//         const { formId, authorizer, requestedBy, startDate, startTime, endDate, endTime, location, remarks, workers, contractors, questions } = req.body;
+//         const submissionId = uuidv4();
+//         const insertSubmissionQuery = `INSERT INTO public.submissions (submission_id, form_id, authorizer, requested_by, start_date, start_time, end_date, end_time, location, remark, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
+//         await client.query(insertSubmissionQuery, [submissionId, formId, authorizer, requestedBy, startDate, startTime, endDate, endTime, location, remarks, status]);
+
+//         for (const worker of workers) {
+//             const workerId = worker.id || uuidv4();
+//             const insertWorkerQuery = `INSERT INTO public.workers (worker_id, name, mobile_number) VALUES ($1, $2, $3) ON CONFLICT (worker_id) DO NOTHING`;
+//             await client.query(insertWorkerQuery, [workerId, worker.name, worker.mobileNumber]);
+//             const insertSubmissionWorkerQuery = `INSERT INTO public.submission_workers (submission_id, worker_id) VALUES ($1, $2)`;
+//             await client.query(insertSubmissionWorkerQuery, [submissionId, workerId]);
+//         }
+
+//         for (const contractor of contractors) {
+//             const contractorId = contractor.id || uuidv4();
+//             const insertContractorQuery = `INSERT INTO public.contractors (contractor_id, name, mobile_number) VALUES ($1, $2, $3) ON CONFLICT (contractor_id) DO NOTHING`;
+//             await client.query(insertContractorQuery, [contractorId, contractor.name, contractor.mobileNumber]);
+//             const insertSubmissionContractorQuery = `INSERT INTO public.submission_contractors (submission_id, contractor_id) VALUES ($1, $2)`;
+//             await client.query(insertSubmissionContractorQuery, [submissionId, contractorId]);
+//         }
+
+//         for (const question of questions) {
+//             const insertAnswerQuery = `INSERT INTO public.answers (submission_id, question_id, answer_text, remark) VALUES ($1, $2, $3, $4)`;
+//             await client.query(insertAnswerQuery, [submissionId, question.question_id, question.answer, question.remarks]);
+
+//             if (question.attachment && question.attachment.data) {
+//                 console.log(question.attachment.data);
+//                 const originalFileName = question.attachment.file_name;
+//                 const attachmentFileName = `${submissionId}_${originalFileName}`;
+//                 const attachmentDir = path.join(__dirname, '../uploads');
+//                 const absoluteAttachmentPath = path.join(attachmentDir, attachmentFileName);
+
+//                 try {
+//                     // Ensure the directory exists
+//                     if (!fs.existsSync(attachmentDir)) {
+//                         fs.mkdirSync(attachmentDir);
+//                     }
+
+//                     // Save the attachment file to local storage
+//                     const base64Data = question.attachment.data.split(';base64,').pop();
+//                     const buffer = Buffer.from(base64Data, 'base64');
+//                     fs.writeFileSync(absoluteAttachmentPath, buffer);
+
+//                     // Verify if the file size is correct
+//                     const savedFileSize = fs.statSync(absoluteAttachmentPath).size;
+//                     if (savedFileSize !== buffer.length) {
+//                         throw new Error('File size mismatch after writing');
+//                     }
+
+//                     // Insert a record into the attachments table with the relative path
+//                     const insertAttachmentQuery = `INSERT INTO public.attachments (submission_id, question_id, file_name, file_path) VALUES ($1, $2, $3, $4)`;
+//                     await client.query(insertAttachmentQuery, [submissionId, question.question_id, attachmentFileName, `uploads/${attachmentFileName}`]);
+//                 } catch (fileError) {
+//                     throw new Error(`File handling error: ${fileError.message}`);
+//                 }
+//             }
+//         }
+
+//         const { form, authorizer: authorizerDetails } = await fetchFormAndAuthorizer(client, formId, authorizer);
+        
+//         await sendSubmissionEmail(form, authorizerDetails);
+        
+//         await client.query('COMMIT');
+//         res.status(201).json({ message: 'Submission details inserted successfully' });
+//     } catch (error) {
+//         await client.query('ROLLBACK');
+//         console.error('Error inserting submission details:', error);
+//         res.status(500).json({ error: 'Error inserting submission details' });
+//     } finally {
+//         client.release();
+//     }
+// }
 async function insertSubmissionDetails(req, res) {
     const client = await db.connect();
     try {
         await client.query('BEGIN');
-        const status = 'opened';
-        const { formId, authorizer, requestedBy, startDate, startTime, endDate, endTime, location, remarks, workers, contractors, questions } = req.body;
+        const { submitted_by, form_id, form_name, form_description, version, needs_approval, frequency_id, moderation_id, authorizer, form_data } = req.body;
+
+        // Generate UUID for submission
         const submissionId = uuidv4();
-        const insertSubmissionQuery = `INSERT INTO public.submissions (submission_id, form_id, authorizer, requested_by, start_date, start_time, end_date, end_time, location, remark, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
-        await client.query(insertSubmissionQuery, [submissionId, formId, authorizer, requestedBy, startDate, startTime, endDate, endTime, location, remarks, status]);
-
-        for (const worker of workers) {
-            const workerId = worker.id || uuidv4();
-            const insertWorkerQuery = `INSERT INTO public.workers (worker_id, name, mobile_number) VALUES ($1, $2, $3) ON CONFLICT (worker_id) DO NOTHING`;
-            await client.query(insertWorkerQuery, [workerId, worker.name, worker.mobileNumber]);
-            const insertSubmissionWorkerQuery = `INSERT INTO public.submission_workers (submission_id, worker_id) VALUES ($1, $2)`;
-            await client.query(insertSubmissionWorkerQuery, [submissionId, workerId]);
-        }
-
-        for (const contractor of contractors) {
-            const contractorId = contractor.id || uuidv4();
-            const insertContractorQuery = `INSERT INTO public.contractors (contractor_id, name, mobile_number) VALUES ($1, $2, $3) ON CONFLICT (contractor_id) DO NOTHING`;
-            await client.query(insertContractorQuery, [contractorId, contractor.name, contractor.mobileNumber]);
-            const insertSubmissionContractorQuery = `INSERT INTO public.submission_contractors (submission_id, contractor_id) VALUES ($1, $2)`;
-            await client.query(insertSubmissionContractorQuery, [submissionId, contractorId]);
-        }
-
-        for (const question of questions) {
-            const insertAnswerQuery = `INSERT INTO public.answers (submission_id, question_id, answer_text, remark) VALUES ($1, $2, $3, $4)`;
-            await client.query(insertAnswerQuery, [submissionId, question.question_id, question.answer, question.remarks]);
-
-            if (question.attachment && question.attachment.data) {
-                console.log(question.attachment.data);
-                const originalFileName = question.attachment.file_name;
-                const attachmentFileName = `${submissionId}_${originalFileName}`;
-                const attachmentDir = path.join(__dirname, '../uploads');
-                const absoluteAttachmentPath = path.join(attachmentDir, attachmentFileName);
-
-                try {
-                    // Ensure the directory exists
-                    if (!fs.existsSync(attachmentDir)) {
-                        fs.mkdirSync(attachmentDir);
-                    }
-
-                    // Save the attachment file to local storage
-                    const base64Data = question.attachment.data.split(';base64,').pop();
-                    const buffer = Buffer.from(base64Data, 'base64');
-                    fs.writeFileSync(absoluteAttachmentPath, buffer);
-
-                    // Verify if the file size is correct
-                    const savedFileSize = fs.statSync(absoluteAttachmentPath).size;
-                    if (savedFileSize !== buffer.length) {
-                        throw new Error('File size mismatch after writing');
-                    }
-
-                    // Insert a record into the attachments table with the relative path
-                    const insertAttachmentQuery = `INSERT INTO public.attachments (submission_id, question_id, file_name, file_path) VALUES ($1, $2, $3, $4)`;
-                    await client.query(insertAttachmentQuery, [submissionId, question.question_id, attachmentFileName, `uploads/${attachmentFileName}`]);
-                } catch (fileError) {
-                    throw new Error(`File handling error: ${fileError.message}`);
-                }
-            }
-        }
-
-        const { form, authorizer: authorizerDetails } = await fetchFormAndAuthorizer(client, formId, authorizer);
         
-        await sendSubmissionEmail(form, authorizerDetails);
-        
+        // Define status with let to allow reassignment
+        let status = needs_approval ? null : true;
+
+        // Insert submission details with form_data as JSON
+        const insertSubmissionQuery = `
+            INSERT INTO elkem.submissions (submission_id, submitted_by, form_id, form_name, form_description, version, needs_approval, frequency_id, moderation_id, authorizer, form_data, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `;
+        await client.query(insertSubmissionQuery, [
+            submissionId, submitted_by, form_id, form_name, form_description, version, needs_approval, frequency_id, moderation_id, authorizer, JSON.stringify(form_data), status
+        ]);
+
+        // Fetch form and authorizer details for email (if required)
+       //const { form, authorizer: authorizerDetails } = await fetchFormAndAuthorizer(client, form_id, authorizer);
+
+        // Send email about the submission (if required)
+        // await sendSubmissionEmail(form, authorizerDetails);
+
         await client.query('COMMIT');
         res.status(201).json({ message: 'Submission details inserted successfully' });
     } catch (error) {
@@ -473,6 +510,8 @@ async function insertSubmissionDetails(req, res) {
         client.release();
     }
 }
+
+
 
 
 async function getUserSubmissions(req, res) {
@@ -907,11 +946,11 @@ async function getSubmissionCount(req, res) {
 
 async function fetchFormAndAuthorizer(client, formId, authorizerId) {
     // Fetch form details from the database
-    const formDetailsQuery = 'SELECT form_name, form_description FROM public.forms WHERE form_id = $1';
+    const formDetailsQuery = 'SELECT form_name, form_description FROM elkem.forms WHERE form_id = $1';
     const formDetailsResult = await client.query(formDetailsQuery, [formId]);
 
     // Fetch authorizer details from the database
-    const authorizerDetailsQuery = 'SELECT personal_email, first_name, last_name FROM public.users WHERE user_id = $1';
+    const authorizerDetailsQuery = 'SELECT personal_email, first_name, last_name FROM elkem.users WHERE user_id = $1';
     const authorizerDetailsResult = await client.query(authorizerDetailsQuery, [authorizerId]);
 
     if (formDetailsResult.rows.length === 0 || authorizerDetailsResult.rows.length === 0) {
@@ -972,6 +1011,6 @@ module.exports = {
     insertSubmissionDetails,
     getUserSubmissions,
     getUserSubmissionStatusCounts,
-    getSubmissionDetails,
+    //getSubmissionDetails,
     getSubmissionCount
 }

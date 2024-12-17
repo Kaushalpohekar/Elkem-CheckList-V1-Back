@@ -27,12 +27,16 @@ async function login(req, res) {
 
         const user = result.rows[0];
 
-        if (user.blocked) {
+        if (user.block) {
             return res.status(401).json({ message: 'User is blocked. Please contact support.' });
         }
 
         if (!user.verified) {
             return res.status(401).json({ message: 'User is not Verified. Please contact support.' });
+        }
+
+        if(user.deleted){
+            return res.status(401).json({ message: 'User does not exist!' });
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password_hash);
@@ -561,6 +565,82 @@ async function getProfilePicture(req, res) {
     }
 }
 
+async function toggleBlockStatus(req, res) {
+    const { user_id } = req.params; // Extract user ID from request parameters
+    const { block } = req.body;    // Expect a `block` field in the request body
+
+    // Ensure block is a boolean value
+    if (typeof block !== 'boolean') {
+        return res.status(400).json({ message: 'Invalid block value. Must be true or false.' });
+    }
+
+    try {
+        // Check if the user exists
+        const checkQuery = 'SELECT * FROM elkem.users WHERE user_id = $1';
+        const checkResult = await db.query(checkQuery, [user_id]);
+
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const currentBlockStatus = checkResult.rows[0].block;
+
+        // If the current status matches the requested status, inform the client
+        if (currentBlockStatus === block) {
+            const statusMessage = block ? 'already blocked' : 'already unblocked';
+            return res.status(200).json({ message: `User is ${statusMessage}` });
+        }
+
+        // Update the user's block status
+        const updateQuery = 'UPDATE elkem.users SET block = $1 WHERE user_id = $2';
+        await db.query(updateQuery, [block, user_id]);
+
+        const successMessage = block ? 'User blocked successfully' : 'User unblocked successfully';
+        res.status(200).json({ message: successMessage });
+    } catch (error) {
+        console.error('Error toggling block status:', error);
+        res.status(500).json({ message: 'Error toggling block status' });
+    }
+}
+
+
+async function toggleVerifiedStatus(req, res) {
+    const { user_id } = req.params; // Extract user ID from request parameters
+    const { verified } = req.body;  // Expect a `verified` field in the request body
+
+    // Ensure verified is a boolean value
+    if (typeof verified !== 'boolean') {
+        return res.status(400).json({ message: 'Invalid verified value. Must be true or false.' });
+    }
+
+    try {
+        // Check if the user exists
+        const checkQuery = 'SELECT * FROM elkem.users WHERE user_id = $1';
+        const checkResult = await db.query(checkQuery, [user_id]);
+
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const currentVerifiedStatus = checkResult.rows[0].verified;
+
+        // If the current status matches the requested status, inform the client
+        if (currentVerifiedStatus === verified) {
+            const statusMessage = verified ? 'already verified' : 'already unverified';
+            return res.status(200).json({ message: `User is ${statusMessage}` });
+        }
+
+        // Update the user's verified status
+        const updateQuery = 'UPDATE elkem.users SET verified = $1 WHERE user_id = $2';
+        await db.query(updateQuery, [verified, user_id]);
+
+        const successMessage = verified ? 'User verified successfully' : 'User unverified successfully';
+        res.status(200).json({ message: successMessage });
+    } catch (error) {
+        console.error('Error toggling verified status:', error);
+        res.status(500).json({ message: 'Error toggling verified status' });
+    }
+}
 
 
 
@@ -577,5 +657,7 @@ module.exports={
   updateEmail,
   updatePassword,
   insertOrUpdateUserProfilePhoto,
-  getProfilePicture
+  getProfilePicture,
+  toggleBlockStatus,
+  toggleVerifiedStatus
 };

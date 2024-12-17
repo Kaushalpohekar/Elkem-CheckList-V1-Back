@@ -6,6 +6,7 @@ const auth = require('./auth/authentication.js');
 const standard = require('./standard/standard.js');
 const authorizer = require('./authorized/authorized.js');
 const admin = require('./admin/admin.js');
+const elkem = require('./Elkem/user.js');
 
 // Authentication
 router.post('/forgot', auth.forgotPassword);
@@ -20,7 +21,7 @@ router.put('/updateEmail/:user_id', auth.updateEmail);
 router.put('/updatePassword/:user_id', auth.updatePassword);
 router.put('/updateProfile', auth.insertOrUpdateUserProfilePhoto);
 router.put('/updateUser/:user_id', auth.updateUser);
-router.put('/users/:User_id/block', auth.block);
+
 
 // Standard
 router.get('/getCategories/:department_id/:form_type', standard.getCategories);
@@ -30,9 +31,9 @@ router.get('/getOrganizations/:organization_id', standard.getOrganizations);
 router.get('/getPlants/:plant_id', standard.getPlants);
 router.get('/getQuestions/:form_id', standard.getQuestions);
 router.get('/getSubmissionByInterval/:user_id/:interval', standard.getUserSubmissions);
-router.get('/getSubmissionByIntervalCount/:user_id/:interval', standard.getUserSubmissionStatusCounts);
+
 router.get('/getSubmissionCount/:form_type/:user_id', standard.getSubmissionCount);
-router.get('/getSubmissionDetails/:submission_id', standard.getSubmissionDetails);
+
 router.get('/getAuthorizers/:department_id', standard.getAuthorizersByDepartment);
 router.post('/createForms', standard.createForms);
 router.post('/createQuestions', standard.createQuestions);
@@ -102,9 +103,28 @@ router.get('/getAllIcons', admin.getAllIcons);
 router.put('/updateCategory/:category_id',admin.editCategory);
 router.delete('/deleteCategory/:category_id',admin.deleteCategoryByCategoryId);
 router.get('/userStatisticsByOrganization/:organization_id', admin.userStatisticsByOrganization);
-router.put('/updateUserFromAdmin/:user_id',admin.updateUserFromAdmin);
+
 router.get('/getAllModeration', admin.getAllModeration);
 router.get('/getAllFrequency', admin.getAllFrequency);
 router.post('/addFormToCategory',admin.addFormToCategory);
 router.get('/prevForms/:category_id',admin.previousFormsByCategories);
+// router.put('/users/:User_id/block', auth.block);
+
+router.put('/users/:user_id/block', auth.toggleBlockStatus);
+router.put('/users/:user_id/verified', auth.toggleVerifiedStatus);
+
+router.get('/getPendingForms/:department_id', elkem.getUnsubmittedForms);
+router.get('/getFormCounts/:department_id', elkem.getFormCounts);
+
+router.get('/getDepartmentsByOrganizationId/:organization_id', admin.getDepartmentsByOrganizationId);
+router.put('/updateUserFromAdmin/:user_id',admin.updateUserFromAdmin);
+
+router.get('/getFormById/:form_id', elkem.getFormById);
+router.get('/getUserSubmissions/:user_id/:interval', elkem.getUserSubmissions);
+router.get('/getSubmissionDetails/:submission_id', elkem.getSubmissionData);
+
+
+router.get('/getAuthorizerSubmissions/:user_id/:interval', elkem.getAuthorizerSubmissions);
+
+router.get('/getSubmissionDetailsAuth/:submission_id', elkem.getSubmissionDataAuth);
 module.exports=router;

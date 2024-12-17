@@ -70,66 +70,90 @@ async function getUserSubmissions(req, res) {
     }
 }
 
+
 async function approveSubmission(req, res) {
     const { approved_by, password, submission_id } = req.body;
+
+    // Queries
     const queryUser = `
         SELECT u.*, s.sign_id 
-        FROM swp.users u
-        LEFT JOIN swp.UserSignaturePhotos s ON u.user_id = s.user_id
+        FROM elkem.users u
+        LEFT JOIN elkem.UserSignaturePhotos s ON u.user_id = s.user_id
         WHERE u.user_id = $1`;
     const querySubmission = `
-        UPDATE swp.submissions 
-        SET status = 'approved', approved_by = $1, approved_at = NOW() 
-        WHERE submission_id = $2 
+        UPDATE elkem.submissions 
+        SET status = true
+        WHERE submission_id = $1 
         RETURNING *`;
 
+    // Begin Transaction
+    const client = await db.connect();
+
     try {
-        const userResult = await db.query(queryUser, [approved_by]);
+        // Step 1: Fetch User Details
+        const userResult = await client.query(queryUser, [approved_by]);
 
         if (userResult.rows.length === 0) {
             return res.status(404).json({ message: 'User does not exist!' });
         }
 
         const user = userResult.rows[0];
-        
-        // Check if user has a signature available
+
+        // Step 2: Check for User Signature
         if (!user.sign_id) {
             return res.status(400).json({ message: 'Signature not found. Upload signature first!' });
         }
 
+        // Step 3: Validate Password
         const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-
         if (!isPasswordValid) {
             return res.status(401).json({ message: 'Password does not match' });
         }
 
-        const submissionResult = await db.query(querySubmission, [user.user_id, submission_id]);
+        // Step 4: Approve Submission
+        await client.query('BEGIN'); // Start transaction
 
+        const submissionResult = await client.query(querySubmission, [submission_id]);
         if (submissionResult.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Submission not found!' });
         }
 
-        res.status(200).json({ message: 'Submission approved successfully!' });
+        await client.query('COMMIT'); // Commit transaction
+
+        // Step 5: Success Response
+        res.status(200).json({
+            message: 'Submission approved successfully!',
+            submission_id,
+            approved_by,
+        });
 
     } catch (error) {
         console.error('Error during submission approval:', error);
+        await client.query('ROLLBACK');
+
         if (error.code === '23503') {
             return res.status(404).json({ message: 'User or Submission not found!' });
         }
         res.status(500).json({ message: 'Internal server error' });
+    } finally {
+        client.release(); // Release the database connection
     }
 }
 
 async function rejectSubmission(req, res) {
     const { rejected_by, password, submission_id } = req.body;
-    const queryUser = `SELECT * FROM swp.users WHERE user_id = $1`;
+
+    // Queries
+    const queryUser = `SELECT * FROM elkem.users WHERE user_id = $1`;
     const querySubmission = `
-        UPDATE submissions 
-        SET status = 'rejected', rejected_by = $1, rejected_at = NOW() 
-        WHERE submission_id = $2 
+        UPDATE elkem.submissions 
+        SET status = false
+        WHERE submission_id = $1 
         RETURNING *`;
 
     try {
+        // Step 1: Verify User
         const userResult = await db.query(queryUser, [rejected_by]);
 
         if (userResult.rows.length === 0) {
@@ -137,25 +161,30 @@ async function rejectSubmission(req, res) {
         }
 
         const user = userResult.rows[0];
-        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
+        // Step 2: Validate Password
+        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
         if (!isPasswordValid) {
             return res.status(401).json({ message: 'Password does not match' });
         }
 
-        const submissionResult = await db.query(querySubmission, [user.user_id, submission_id]);
+        // Step 3: Reject Submission
+        const submissionResult = await db.query(querySubmission, [submission_id]);
 
         if (submissionResult.rows.length === 0) {
             return res.status(404).json({ message: 'Submission not found!' });
         }
 
+        // Step 4: Success Response
         res.status(200).json({ message: 'Submission rejected successfully!' });
 
     } catch (error) {
         console.error('Error during submission rejection:', error);
+
         if (error.code === '23503') {
             return res.status(404).json({ message: 'User or Submission not found!' });
         }
+
         res.status(500).json({ message: 'Internal server error' });
     }
 }
@@ -178,12 +207,12 @@ async function getUserDetails(req, res) {
                 up.photo_path, up.photo_name as profile_name,
                 us.sign_path, us.sign_name as sign_name
             FROM 
-                swp.users u
-                LEFT JOIN swp.departments d ON u.department_id = d.department_id
-                LEFT JOIN swp.organizations o ON u.organization_id = o.organization_id
-                LEFT JOIN swp.plants p ON d.plant_id = p.plant_id
-                LEFT JOIN swp.userprofilepictures up ON u.user_id = up.user_id
-                LEFT JOIN swp.usersignaturephotos us ON u.user_id = us.user_id
+                elkem.users u
+                LEFT JOIN elkem.departments d ON u.department_id = d.department_id
+                LEFT JOIN elkem.organizations o ON u.organization_id = o.organization_id
+                LEFT JOIN elkem.plants p ON d.plant_id = p.plant_id
+                LEFT JOIN elkem.userprofilepictures up ON u.user_id = up.user_id
+                LEFT JOIN elkem.usersignaturephotos us ON u.user_id = us.user_id
             WHERE 
                 u.user_id = $1;
         `;
@@ -567,7 +596,7 @@ async function insertOrUpdateSignature(req, res) {
         }
 
         // Check if user_id exists in the users table
-        const userCheckQuery = 'SELECT 1 FROM swp.users WHERE user_id = $1';
+        const userCheckQuery = 'SELECT 1 FROM elkem.users WHERE user_id = $1';
         const userResult = await client.query(userCheckQuery, [user_id]);
 
         if (userResult.rowCount === 0) {
@@ -576,7 +605,7 @@ async function insertOrUpdateSignature(req, res) {
         }
 
         // Check if user_id exists in the userSignaturePhotos table
-        const signatureCheckQuery = 'SELECT 1 FROM swp.usersignaturephotos WHERE user_id = $1';
+        const signatureCheckQuery = 'SELECT 1 FROM elkem.usersignaturephotos WHERE user_id = $1';
         const signatureResult = await client.query(signatureCheckQuery, [user_id]);
 
         // Save the file to the sign folder
@@ -603,14 +632,14 @@ async function insertOrUpdateSignature(req, res) {
         // Insert or update the record in the userSignaturePhotos table
         if (signatureResult.rowCount > 0) {
             const updateSignatureQuery = `
-                UPDATE swp.userSignaturePhotos
+                UPDATE elkem.userSignaturePhotos
                 SET sign_name = $1, sign_path = $2
                 WHERE user_id = $3
             `;
             await client.query(updateSignatureQuery, [file_name, signPath, user_id]);
         } else {
             const insertSignatureQuery = `
-                INSERT INTO swp.userSignaturePhotos (user_id, sign_name, sign_path)
+                INSERT INTO elkem.userSignaturePhotos (user_id, sign_name, sign_path)
                 VALUES ($1, $2, $3)
             `;
             await client.query(insertSignatureQuery, [user_id, file_name, signPath]);

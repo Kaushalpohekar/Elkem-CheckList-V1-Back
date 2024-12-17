@@ -154,11 +154,13 @@ async function usersByOrganizationId(req, res) {
     const { organization_id } = req.params;
     //const query = `SELECT * FROM elkem.users WHERE organization_id = $1`;
     const query = `
-        SELECT u.*, r.name as role_name, p.name as plant_name
+        SELECT u.*, r.name as role_name, p.name as plant_name, d.name as department_name
         FROM elkem.users u
         JOIN elkem.roles r ON u.role_id = r.role_id
-        join elkem.plants p on u.plant_id  = p.plant_id 
-        WHERE u.organization_id =$1`;
+        JOIN elkem.plants p ON u.plant_id  = p.plant_id
+        JOIN elkem.departments d ON u.department_id = d.department_id         
+        WHERE u.organization_id =$1
+        AND u.deleted = false`;
 
     try {
         const result = await db.query(query, [organization_id]);
@@ -470,28 +472,28 @@ async function deleteFormByFormId(req, res) {
     }
 }
 
-async function deleteUser(req, res) {
-    const { user_id } = req.params;
+// async function deleteUser(req, res) {
+//     const { user_id } = req.params;
 
-    const queryDelete = `
-        DELETE FROM elkem.users 
-        WHERE user_id = $1 
-        RETURNING user_id`;
+//     const queryDelete = `
+//         DELETE FROM elkem.users 
+//         WHERE user_id = $1 
+//         RETURNING user_id`;
 
-    try {
-        const resultDelete = await db.query(queryDelete, [user_id]);
-        const deletedUser = resultDelete.rows[0];
+//     try {
+//         const resultDelete = await db.query(queryDelete, [user_id]);
+//         const deletedUser = resultDelete.rows[0];
 
-        if (!deletedUser) {
-            return res.status(404).json({ error: 'user not found' });
-        }
+//         if (!deletedUser) {
+//             return res.status(404).json({ error: 'user not found' });
+//         }
 
-        return res.status(200).json({ message: 'User deleted successfully', User_id: deletedUser.user_id });
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        return res.status(500).json({ error: 'Internal Server Error' });
-    }
-}
+//         return res.status(200).json({ message: 'User deleted successfully', User_id: deletedUser.user_id });
+//     } catch (error) {
+//         console.error('Error deleting user:', error);
+//         return res.status(500).json({ error: 'Internal Server Error' });
+//     }
+// }
 
 async function deleteDepartmentByDepartmentId(req, res) {
     const { department_id } = req.params;
@@ -516,10 +518,103 @@ async function deleteDepartmentByDepartmentId(req, res) {
     }
 }
 
-async function addUser(req, res) {
-    const { personal_email, first_name, last_name, role_id, plant_id, contact_no, password } = req.body;
+// async function addUser(req, res) {
+//     const { personal_email, first_name, last_name, role_id, plant_id, contact_no, password } = req.body;
 
-    if (!personal_email || !first_name || !last_name || !role_id || !plant_id || !contact_no || !password) {
+//     if (!personal_email || !first_name || !last_name || !role_id || !plant_id || !contact_no || !password) {
+//         return res.status(400).json({ error: 'All fields are required' });
+//     }
+
+//     const user_id = uuidv4();
+//     const created_at = new Date().toISOString();
+//     const verified = false;
+//     const block = false;
+//     const username = personal_email;
+
+//     try {
+//         const password_hash = await bcrypt.hash(password, 10);
+
+//         // Query to find organization_id using plant_id
+//         const queryPlant = `SELECT organization_id FROM elkem.plants WHERE plant_id = $1`;
+//         const resultPlant = await db.query(queryPlant, [plant_id]);
+
+//         if (resultPlant.rows.length === 0) {
+//             return res.status(404).json({ error: 'Plant not found' });
+//         }
+
+//         const organization_id = resultPlant.rows[0].organization_id;
+
+//         // Query to check if the user exists with the provided email and is deleted
+//         const queryUserCheck = `
+//             SELECT user_id, deleted FROM elkem.users WHERE personal_email = $1`;
+//         const resultUserCheck = await db.query(queryUserCheck, [personal_email]);
+
+//         if (resultUserCheck.rows.length > 0) {
+//             const existingUser = resultUserCheck.rows[0];
+
+//             if (existingUser.deleted) {
+//                 // If the user is marked as deleted, update the user with new data
+//                 const queryUpdate = `
+//                     UPDATE elkem.users 
+//                     SET 
+//                         user_id = $1,
+//                         username = $2,
+//                         personal_email = $3,
+//                         password_hash = $4,
+//                         first_name = $5,
+//                         last_name = $6,
+//                         role_id = $7,
+//                         organization_id = $8,
+//                         plant_id = $9,
+//                         created_at = $10,
+//                         verified = $11,
+//                         block = $12,
+//                         contact_no = $13,
+//                         deleted = $14
+//                     WHERE user_id = $15
+//                     RETURNING user_id`;
+
+//                 const valuesUpdate = [user_id, username, personal_email, password_hash, first_name, last_name, role_id, organization_id, plant_id, created_at, verified, block, contact_no, false, existingUser.user_id];
+
+//                 const resultUpdate = await db.query(queryUpdate, valuesUpdate);
+//                 const updatedUser = resultUpdate.rows[0];
+
+//                 if (!updatedUser) {
+//                     return res.status(500).json({ error: 'User could not be updated' });
+//                 }
+
+//                 return res.status(200).json(updatedUser);
+//             } else {
+//                 // If the user is not deleted, return an error that the user already exists
+//                 return res.status(400).json({ error: 'User already exists and is not deleted' });
+//             }
+//         }
+
+//         // If the user doesn't exist, proceed with inserting a new user
+//         const queryInsert = `
+//             INSERT INTO elkem.users (user_id, username, personal_email, password_hash, first_name, last_name, role_id, organization_id, plant_id, created_at, company_email, verified, block, contact_no) 
+//             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+//             RETURNING user_id`;
+
+//         const valuesInsert = [user_id, username, personal_email, password_hash, first_name, last_name, role_id, organization_id, plant_id, created_at, personal_email, verified, block, contact_no];
+
+//         const resultInsert = await db.query(queryInsert, valuesInsert);
+//         const newUser = resultInsert.rows[0];
+
+//         if (!newUser) {
+//             return res.status(500).json({ error: 'User could not be added' });
+//         }
+
+//         return res.status(201).json(newUser);
+//     } catch (error) {
+//         console.error('Error adding user:', error);
+//         return res.status(500).json({ error: 'Internal Server Error' });
+//     }
+// }
+async function addUser(req, res) {
+    const { personal_email, first_name, last_name, role_id, plant_id, contact_no, password, department_id } = req.body;
+
+    if (!personal_email || !first_name || !last_name || !role_id || !plant_id || !contact_no || !password || !department_id) {
         return res.status(400).json({ error: 'All fields are required' });
     }
 
@@ -533,8 +628,7 @@ async function addUser(req, res) {
         const password_hash = await bcrypt.hash(password, 10);
 
         // Query to find organization_id using plant_id
-        const queryPlant = `
-            SELECT organization_id FROM elkem.plants WHERE plant_id = $1`;
+        const queryPlant = `SELECT organization_id FROM elkem.plants WHERE plant_id = $1`;
         const resultPlant = await db.query(queryPlant, [plant_id]);
 
         if (resultPlant.rows.length === 0) {
@@ -543,15 +637,61 @@ async function addUser(req, res) {
 
         const organization_id = resultPlant.rows[0].organization_id;
 
-        // Insertion query for users table
+        // Query to check if the user exists with the provided email and is deleted
+        const queryUserCheck = `SELECT user_id, deleted FROM elkem.users WHERE personal_email = $1`;
+        const resultUserCheck = await db.query(queryUserCheck, [personal_email]);
+
+        if (resultUserCheck.rows.length > 0) {
+            const existingUser = resultUserCheck.rows[0];
+
+            if (existingUser.deleted) {
+                // If the user is marked as deleted, update the user with new data
+                const queryUpdate = `
+                    UPDATE elkem.users 
+                    SET 
+                        user_id = $1,
+                        username = $2,
+                        personal_email = $3,
+                        password_hash = $4,
+                        first_name = $5,
+                        last_name = $6,
+                        role_id = $7,
+                        organization_id = $8,
+                        plant_id = $9,
+                        department_id = $10,
+                        created_at = $11,
+                        verified = $12,
+                        block = $13,
+                        contact_no = $14,
+                        deleted = $15
+                    WHERE user_id = $16
+                    RETURNING user_id`;
+
+                const valuesUpdate = [user_id, username, personal_email, password_hash, first_name, last_name, role_id, organization_id, plant_id, department_id, created_at, verified, block, contact_no, false, existingUser.user_id];
+
+                const resultUpdate = await db.query(queryUpdate, valuesUpdate);
+                const updatedUser = resultUpdate.rows[0];
+
+                if (!updatedUser) {
+                    return res.status(500).json({ error: 'User could not be updated' });
+                }
+
+                return res.status(200).json(updatedUser);
+            } else {
+                // If the user is not deleted, return an error that the user already exists
+                return res.status(400).json({ error: 'User already exists and is not deleted' });
+            }
+        }
+
+        // If the user doesn't exist, proceed with inserting a new user
         const queryInsert = `
-            INSERT INTO elkem.users (user_id, username, personal_email, password_hash, first_name, last_name, role_id, organization_id, plant_id, created_at, company_email, verified, block, contact_no) 
+            INSERT INTO elkem.users (user_id, username, personal_email, password_hash, first_name, last_name, role_id, organization_id, plant_id, department_id, created_at, company_email, verified, block, contact_no) 
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             RETURNING user_id`;
 
-        const values = [user_id, username, personal_email, password_hash, first_name, last_name, role_id, organization_id, plant_id, created_at, personal_email, verified, block, contact_no];
+        const valuesInsert = [user_id, username, personal_email, password_hash, first_name, last_name, role_id, organization_id, plant_id, department_id, created_at, personal_email, verified, block, contact_no];
 
-        const resultInsert = await db.query(queryInsert, values);
+        const resultInsert = await db.query(queryInsert, valuesInsert);
         const newUser = resultInsert.rows[0];
 
         if (!newUser) {
@@ -568,29 +708,32 @@ async function addUser(req, res) {
 
 async function updateUser(req, res) {
     const { user_id } = req.params; // Extract user_id from URL parameters
-    const { personal_email, first_name, last_name, role_id, plant_id, contact_no, password } = req.body;
+    const { personal_email, first_name, last_name, role_id, plant_id, contact_no, department_id } = req.body;
+    console.log(department_id);
 
-    if (!user_id || !personal_email || !first_name || !last_name || !role_id || !plant_id || !contact_no) {
+    if (!user_id || !personal_email || !first_name || !last_name || !role_id || !plant_id || !contact_no || !department_id) {
         return res.status(400).json({ error: 'All fields are required' });
     }
 
     const username = personal_email;
 
     try {
-        // Update query for users table
+        // Update query for users table, now including department_id
         const queryUpdate = `
             UPDATE elkem.users
-            SET username = $2,
+            SET 
+                username = $2,
                 personal_email = $3,
                 first_name = $4,
                 last_name = $5,
                 role_id = $6,
                 plant_id = $7,
-                contact_no = $8
+                department_id = $8,
+                contact_no = $9
             WHERE user_id = $1
             RETURNING user_id`;
 
-        const values = [user_id, username, personal_email, first_name, last_name, role_id, plant_id, contact_no];
+        const values = [user_id, username, personal_email, first_name, last_name, role_id, plant_id, department_id, contact_no];
 
         const resultUpdate = await db.query(queryUpdate, values);
         const updatedUser = resultUpdate.rows[0];
@@ -605,6 +748,7 @@ async function updateUser(req, res) {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 }
+
 
 
 
@@ -695,6 +839,7 @@ async function userStatisticsByOrganization(req, res) {
         FROM elkem.users u
         LEFT JOIN elkem.roles r ON u.role_id = r.role_id
         WHERE u.organization_id = $1
+        AND u.deleted = false
     `;
 
     try {
@@ -711,17 +856,16 @@ async function userStatisticsByOrganization(req, res) {
 
 async function updateUserFromAdmin(req, res) {
     const { user_id } = req.params; // Extract user_id from URL parameters
-    const { personal_email, first_name, last_name, role_id, plant_id, contact_no } = req.body;
+    const { personal_email, first_name, last_name, role_id, plant_id, contact_no, department_id } = req.body;
 
-    // Ensure required fields are provided
-    if (!user_id || !personal_email || !first_name || !last_name || !role_id || !plant_id || !contact_no) {
-        return res.status(400).json({ error: 'All required fields must be provided' });
+    if (!user_id || !personal_email || !first_name || !last_name || !role_id || !plant_id || !contact_no || !department_id) {
+        return res.status(400).json({ error: 'All fields are required' });
     }
 
-    const username = personal_email; // Assuming username is the same as personal_email
+    const username = personal_email;
 
     try {
-        // Update query for users table
+        // Update query for users table, now including department_id
         const queryUpdate = `
             UPDATE elkem.users
             SET 
@@ -731,21 +875,12 @@ async function updateUserFromAdmin(req, res) {
                 last_name = $5,
                 role_id = $6,
                 plant_id = $7,
-                contact_no = $8
+                department_id = $8,
+                contact_no = $9
             WHERE user_id = $1
             RETURNING user_id`;
 
-        // Values to update
-        const values = [
-            user_id, 
-            username, 
-            personal_email, 
-            first_name, 
-            last_name, 
-            role_id, 
-            plant_id, 
-            contact_no
-        ];
+        const values = [user_id, username, personal_email, first_name, last_name, role_id, plant_id, department_id, contact_no];
 
         const resultUpdate = await db.query(queryUpdate, values);
         const updatedUser = resultUpdate.rows[0];
@@ -906,6 +1041,65 @@ async function previousFormsByCategories(req, res) {
     }
 }
 
+async function deleteUser(req, res) {
+    const { user_id } = req.params;
+
+    // Update query to set 'deleted' to true for the given user
+    const queryDelete = `
+        UPDATE elkem.users 
+        SET deleted = true 
+        WHERE user_id = $1 
+        RETURNING user_id, deleted`;
+
+    try {
+        const resultDelete = await db.query(queryDelete, [user_id]);
+        const deletedUser = resultDelete.rows[0];
+
+        if (!deletedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Return success message with the updated status
+        return res.status(200).json({ 
+            message: 'User deleted successfully', 
+        });
+    } catch (error) {
+        console.error('Error marking user as deleted:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+async function getDepartmentsByOrganizationId(req, res) {
+    const { organization_id } = req.params; // Extract organization_id from URL parameters
+
+    if (!organization_id) {
+        return res.status(400).json({ error: 'Organization ID is required' });
+    }
+
+    try {
+        // Query to get all departments for the given organization
+        const query = `
+            SELECT d.department_id, d.name, d.plant_id, d.created_at
+            FROM elkem.departments d
+            JOIN elkem.plants p ON d.plant_id = p.plant_id
+            WHERE p.organization_id = $1
+            ORDER BY d.name`;
+
+        const result = await db.query(query, [organization_id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'No departments found for this organization' });
+        }
+
+        return res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Error fetching departments:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+
+
 
 module.exports = {
     organizationByOrganizationId,
@@ -937,5 +1131,6 @@ module.exports = {
     updateUserFromAdmin,
     getAllFrequency,
     getAllModeration,
-    addFormToCategory
+    addFormToCategory,
+    getDepartmentsByOrganizationId
 }
