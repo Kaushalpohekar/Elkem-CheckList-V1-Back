@@ -1098,9 +1098,6 @@ async function getDepartmentsByOrganizationId(req, res) {
     }
 }
 
-
-
-
 module.exports = {
     organizationByOrganizationId,
     FormByFormId,
@@ -1127,7 +1124,7 @@ module.exports = {
     getAllIcons,
     editCategory,
     deleteCategoryByCategoryId,
-    userStatisticsByOrganization,
+     userStatisticsByOrganization,
     updateUserFromAdmin,
     getAllFrequency,
     getAllModeration,
