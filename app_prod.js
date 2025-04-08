@@ -6,10 +6,10 @@ const fs = require('fs');
 
 
 const app = express();
-const port = 4100;
+const port = 3005;
 
-const privateKey = fs.readFileSync('/etc/letsencrypt/live/senso.senselive.in/privkey.pem', 'utf8');
-const fullchain = fs.readFileSync('/etc/letsencrypt/live/senso.senselive.in/fullchain.pem', 'utf8');
+const privateKey = fs.readFileSync('/etc/letsencrypt/live/senso.senselive.io/privkey.pem', 'utf8');
+const fullchain = fs.readFileSync('/etc/letsencrypt/live/senso.senselive.io/fullchain.pem', 'utf8');
 const credentials = { key: privateKey, cert: fullchain };
 
 // Middleware to enable CORS
@@ -22,8 +22,8 @@ app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Use the router for handling routes
-app.use('/swp', router);
-app.get('/swp/test', (req, res) => {
+app.use('/elkem-check', router);
+app.get('/elkem-check/test', (req, res) => {
   console.log('Received GET request to /api/example');
   res.send('Response from Node.js server');
 });

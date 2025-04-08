@@ -143,7 +143,6 @@ async function forgotPassword(req, res) {
         //await sendResetTokenEmail(usernameOrEmail, resetToken);
 
         res.status(200).json({ message: 'Reset token sent to your email' });
-        console.log('http://localhost:4200/l/reset?token=',resetToken);
     } catch (error) {
         console.error('Error during password reset process:', error);
         res.status(500).json({ message: 'Internal server error' });
@@ -250,13 +249,10 @@ function sendTokenEmail(personal_email, verificationToken) {
 
 async function getUserDetails(req, res) {
     const token = req.headers.authorization.split(' ')[1];
-    console.log(token);
 
     try {
         const decodedToken = jwtUtils.verifyToken(token);
-        console.log(decodedToken);
         if (!decodedToken) {
-            console.log('Invalid Token');
             return res.status(401).json({ message: 'Invalid token' });
         }
 
@@ -327,8 +323,6 @@ async function block(req, res) {
 async function getAllTokens(req, res) {
     const { token } = req.body;
     const matchToken = 'SenseLive-Smart-Work-Permit';
-
-    console.log('Received token:', token);
     
     if (token === matchToken) {
         try {
@@ -340,8 +334,6 @@ async function getAllTokens(req, res) {
             }
 
             const tokenData = result.rows;
-
-            console.log(tokenData);
 
             return res.status(200).json({ tokenData });
         } catch (error) {

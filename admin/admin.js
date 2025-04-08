@@ -709,7 +709,6 @@ async function addUser(req, res) {
 async function updateUser(req, res) {
     const { user_id } = req.params; // Extract user_id from URL parameters
     const { personal_email, first_name, last_name, role_id, plant_id, contact_no, department_id } = req.body;
-    console.log(department_id);
 
     if (!user_id || !personal_email || !first_name || !last_name || !role_id || !plant_id || !contact_no || !department_id) {
         return res.status(400).json({ error: 'All fields are required' });
